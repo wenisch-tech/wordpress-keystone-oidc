@@ -1,5 +1,10 @@
 == Changelog ==
 
+= 2.3.5 =
+### [2.3.5](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v2.3.4...v2.3.5) (2026-09-24)
+
+
+
 = 2.3.4 =
 ### [2.3.4](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v2.3.3...v2.3.4) (2026-08-21)
 
