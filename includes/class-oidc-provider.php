@@ -187,13 +187,13 @@ class KEYSTONE_OIDC_Provider {
 			'token_endpoint'                        => self::get_endpoint_url( 'oauth/token' ),
 			'userinfo_endpoint'                     => self::get_endpoint_url( 'oauth/userinfo' ),
 			'jwks_uri'                              => self::get_endpoint_url( 'oauth/jwks' ),
-			'scopes_supported'                      => array( 'openid', 'profile', 'email' ),
+			'scopes_supported'                      => array( 'openid', 'profile', 'email', 'roles' ),
 			'response_types_supported'              => array( 'code' ),
 			'grant_types_supported'                 => array( 'authorization_code', 'refresh_token' ),
 			'subject_types_supported'               => array( 'public' ),
 			'id_token_signing_alg_values_supported' => array( 'RS256' ),
 			'token_endpoint_auth_methods_supported' => array( 'client_secret_basic', 'client_secret_post' ),
-			'claims_supported'                      => array( 'sub', 'iss', 'aud', 'iat', 'exp', 'name', 'given_name', 'family_name', 'preferred_username', 'email', 'email_verified' ),
+			'claims_supported'                      => array( 'sub', 'iss', 'aud', 'iat', 'exp', 'name', 'given_name', 'family_name', 'preferred_username', 'email', 'email_verified', 'roles' ),
 			'code_challenge_methods_supported'      => array( 'S256', 'plain' ),
 		);
 
@@ -245,6 +245,10 @@ class KEYSTONE_OIDC_Provider {
 			$this->redirect_with_error( $redirect_uri, 'invalid_scope', 'The "openid" scope is required.', $state );
 			return;
 		}
+
+		// Only grant scopes the client is allowed to use ("openid" is always allowed).
+		$allowed_scopes = array_merge( array( 'openid' ), explode( ' ', (string) $client->allowed_scopes ) );
+		$scope          = implode( ' ', array_values( array_intersect( $requested_scopes, $allowed_scopes ) ) );
 
 		if ( ! is_user_logged_in() ) {
 			$authorize_params = array_filter(
@@ -304,6 +308,7 @@ class KEYSTONE_OIDC_Provider {
 			'openid'  => __( 'Verify your identity', 'keystone-oidc' ),
 			'profile' => __( 'Access your name and username', 'keystone-oidc' ),
 			'email'   => __( 'Access your email address', 'keystone-oidc' ),
+			'roles'   => __( 'Access your WordPress roles', 'keystone-oidc' ),
 		);
 		$requested_scopes = explode( ' ', $scope );
 		$authorize_url    = add_query_arg(
@@ -468,19 +473,10 @@ class KEYSTONE_OIDC_Provider {
 			return;
 		}
 
-		$userinfo = array( 'sub' => (string) $user_id );
-
-		if ( in_array( 'profile', $scopes, true ) ) {
-			$userinfo['name']               = $user->display_name;
-			$userinfo['given_name']         = $user->first_name;
-			$userinfo['family_name']        = $user->last_name;
-			$userinfo['preferred_username'] = $user->user_login;
-		}
-
-		if ( in_array( 'email', $scopes, true ) ) {
-			$userinfo['email']          = $user->user_email;
-			$userinfo['email_verified'] = true;
-		}
+		$userinfo = array_merge(
+			array( 'sub' => (string) $user_id ),
+			KEYSTONE_OIDC_Token_Manager::build_user_claims( $user, $scopes )
+		);
 
 		$this->send_json( $userinfo );
 	}

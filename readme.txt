@@ -8,7 +8,7 @@ Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Turn your WordPress site into an OpenID Connect (OIDC) identity provider. Manage clients through a simple admin panel.
+Turn your WordPress site into an OIDC identity provider and manage unlimited clients through a simple admin panel.
 
 == Description ==
 
@@ -22,6 +22,7 @@ Keystone OIDC transforms your WordPress installation into a fully-featured **Ope
 * **Client secret management** – generate and reset secrets securely (shown only once)
 * **OIDC Discovery** endpoint (`/wenisch-tech/keystone-oidc/.well-known/openid-configuration`) for automatic client configuration
 * **Standard scopes**: `openid`, `profile`, `email`
+* **WordPress roles** – the optional `roles` scope adds a `roles` claim with the user's WordPress roles to the ID token and UserInfo response
 * **Refresh tokens** for long-lived sessions
 * **Zero additional configuration** after install – just create a client and you're ready
 
@@ -61,7 +62,11 @@ For `openid profile email`, `/wenisch-tech/keystone-oidc/oauth/userinfo` returns
 
 `sub` is the WordPress user ID as a string, `preferred_username` is the WordPress `user_login`, and `email` is the WordPress `user_email`.
 
-Roles are not currently emitted. The plugin does not expose WordPress roles or capabilities in UserInfo or ID tokens.
+With the `roles` scope, the response also contains a flat `roles` array of WordPress role slugs:
+
+    "roles": ["editor"]
+
+The `roles` scope is opt-in: tick it in the client's **Allowed Scopes** and request it from your application (for example `scope=openid profile email roles`). Capabilities are not exposed, and WordPress has no native groups, so no `groups` claim is sent.
 
 
 == Installation ==
@@ -81,6 +86,10 @@ Authorization Code Flow (with and without PKCE). This is the most secure flow an
 = Where is the client secret stored? =
 
 Client secrets are **hashed** using WordPress's password hashing (bcrypt). The plaintext secret is shown only once upon creation or reset and is never stored in the database.
+
+= Can I send WordPress roles to my application? =
+
+Yes. Enable the `roles` scope for the client and request it. The user's WordPress roles (such as `administrator` or `editor`) are sent as a `roles` array in the ID token and UserInfo response. Developers can change the list with the `keystone_oidc_user_roles` filter.
 
 = Does this plugin support multiple clients? =
 

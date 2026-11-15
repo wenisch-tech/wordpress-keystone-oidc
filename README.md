@@ -3,6 +3,10 @@
 [![Release](https://github.com/wenisch-tech/wordpress-keystone-oidc/actions/workflows/ci.yml/badge.svg)](https://github.com/wenisch-tech/wordpress-keystone-oidc/actions/workflows/ci.yml)
 [![Latest Release](https://img.shields.io/github/v/release/wenisch-tech/wordpress-keystone-oidc?label=release)](https://github.com/wenisch-tech/wordpress-keystone-oidc/releases/latest)
 
+<p align="center">
+  <img src="assets/logo-animation.gif" alt="Keystone OIDC logo animation: a keystone locks into an arch, the keyhole unlocks into a user who signs in to three apps" width="220">
+</p>
+
 ![Keystone OIDC](assets/banner-1544x500.png)
 
 > Turn your WordPress site into a fully featured **OpenID Connect (OIDC) identity provider**.
@@ -104,7 +108,7 @@ Go to **OIDC Provider → Add Client** in the WordPress admin sidebar.
 Fill in:
 - **Application Name** – a friendly label (e.g. "My Dashboard")
 - **Redirect URIs** – the callback URL(s) your application will use (one per line, e.g. `https://dashboard.example.com/auth/callback`)
-- **Allowed Scopes** – tick `profile` and/or `email` if your app needs user info beyond the basic identity
+- **Allowed Scopes** – tick `profile`, `email` and/or `roles` if your app needs user info beyond the basic identity
 
 Click **Create Client**. You will be shown the **Client ID** and **Client Secret** once – copy them now.
 
@@ -277,7 +281,7 @@ Returns the [OIDC Discovery document](https://openid.net/specs/openid-connect-di
   "token_endpoint": "https://example.com/wenisch-tech/keystone-oidc/oauth/token",
   "userinfo_endpoint": "https://example.com/wenisch-tech/keystone-oidc/oauth/userinfo",
   "jwks_uri": "https://example.com/wenisch-tech/keystone-oidc/oauth/jwks",
-  "scopes_supported": ["openid", "profile", "email"],
+  "scopes_supported": ["openid", "profile", "email", "roles"],
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
   "id_token_signing_alg_values_supported": ["RS256"],
@@ -364,7 +368,7 @@ Example response for `openid profile email`:
 
 `sub` is the WordPress user ID as a string, `preferred_username` is the WordPress `user_login`, and `email` is the WordPress `user_email`.
 
-Roles are not included in the current UserInfo response or ID token. Keystone OIDC does not expose WordPress roles or capabilities as OIDC claims yet.
+With the `roles` scope, the response also contains a flat `roles` array of WordPress role slugs, e.g. `"roles": ["editor"]`. It appears in both the UserInfo response and the ID token. The scope must be allowed on the client and requested by the application.
 
 ### `GET /wenisch-tech/keystone-oidc/oauth/jwks`
 
@@ -379,10 +383,11 @@ Returns the public RSA key in [JWKS format](https://datatracker.ietf.org/doc/htm
 | `openid` | `sub`, `iss`, `aud`, `iat`, `exp`, `jti` |
 | `profile` | `name`, `given_name`, `family_name`, `preferred_username` |
 | `email` | `email`, `email_verified` |
+| `roles` | `roles` (array of WordPress role slugs) |
 
 The `sub` claim is always the WordPress user's numeric ID (as a string), ensuring stable, durable identity.
 
-Roles are not emitted today. If a relying party needs authorization data, manage roles in the client application or add a dedicated roles/groups claim in a future provider version.
+The `roles` claim contains the user's WordPress role slugs (e.g. `administrator`, `editor`). WordPress has no native groups, so no `groups` claim is emitted. Plugins can adjust the released roles with the `keystone_oidc_user_roles` filter.
 
 ---
 

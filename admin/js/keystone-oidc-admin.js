@@ -3,7 +3,7 @@
 	// Build scopes string from checkboxes.
 	function updateScopes() {
 		var scopes = [ 'openid' ];
-		[ 'profile', 'email' ].forEach( function ( s ) {
+		[ 'profile', 'email', 'roles' ].forEach( function ( s ) {
 			var cb = document.querySelector( '[name="scope_' + s + '"]' );
 			if ( cb && cb.checked ) {
 				scopes.push( s );

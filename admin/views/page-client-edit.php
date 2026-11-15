@@ -38,6 +38,7 @@ $keystone_oidc_all_scopes = array(
 	'openid'  => __( 'openid – Required for OIDC', 'keystone-oidc' ),
 	'profile' => __( 'profile – Name, username', 'keystone-oidc' ),
 	'email'   => __( 'email – Email address', 'keystone-oidc' ),
+	'roles'   => __( 'roles – WordPress roles', 'keystone-oidc' ),
 );
 
 $keystone_oidc_active_scopes = $keystone_oidc_is_edit ? explode( ' ', $client->allowed_scopes ) : array( 'openid', 'profile', 'email' );

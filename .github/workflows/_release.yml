@@ -256,12 +256,14 @@ jobs:
             . "${SVN_DIR}/trunk/"
 
           mkdir -p "${ASSET_STAGING}"
-          rsync -a --delete \
+          # The animated GIF icons are the only plugin icons published; the static
+          # PNG versions live in assets/src/ and are intentionally not deployed.
+          rsync -a --delete --prune-empty-dirs \
             --include='*/' \
             --include='banner-772x250.png' \
             --include='banner-1544x500.png' \
-            --include='icon-128x128.png' \
-            --include='icon-256x256.png' \
+            --include='icon-128x128.gif' \
+            --include='icon-256x256.gif' \
             --include='screenshot-*.png' \
             --exclude='*' \
             assets/ "${ASSET_STAGING}/"
@@ -280,6 +282,7 @@ jobs:
           done
 
           find assets -type f -name '*.png' -print0 | xargs -0 -r svn propset svn:mime-type image/png
+          find assets -type f -name '*.gif' -print0 | xargs -0 -r svn propset svn:mime-type image/gif
 
           SVN_STATUS="$(svn status)"
           if [ -n "${SVN_STATUS}" ]; then

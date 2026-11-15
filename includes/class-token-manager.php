@@ -368,18 +368,8 @@ class KEYSTONE_OIDC_Token_Manager {
 		if ( $nonce ) {
 			$id_payload['nonce'] = $nonce;
 		}
-		$scopes = explode( ' ', $scope );
 		if ( $user ) {
-			if ( in_array( 'profile', $scopes, true ) ) {
-				$id_payload['name']               = $user->display_name;
-				$id_payload['given_name']         = $user->first_name;
-				$id_payload['family_name']        = $user->last_name;
-				$id_payload['preferred_username'] = $user->user_login;
-			}
-			if ( in_array( 'email', $scopes, true ) ) {
-				$id_payload['email']          = $user->user_email;
-				$id_payload['email_verified'] = true;
-			}
+			$id_payload = array_merge( $id_payload, self::build_user_claims( $user, explode( ' ', $scope ) ) );
 		}
 		$id_token = self::create_jwt( $id_payload );
 
@@ -394,6 +384,42 @@ class KEYSTONE_OIDC_Token_Manager {
 			'refresh_token' => $refresh_token,
 			'expires_in'    => self::ACCESS_TOKEN_LIFETIME,
 		);
+	}
+
+	/**
+	 * Build the user claims released for the given scopes.
+	 *
+	 * Shared by the ID token and the userinfo endpoint.
+	 *
+	 * @param WP_User $user   WordPress user.
+	 * @param array   $scopes Granted scopes.
+	 * @return array Claims.
+	 */
+	public static function build_user_claims( $user, $scopes ) {
+		$claims = array();
+
+		if ( in_array( 'profile', $scopes, true ) ) {
+			$claims['name']               = $user->display_name;
+			$claims['given_name']         = $user->first_name;
+			$claims['family_name']        = $user->last_name;
+			$claims['preferred_username'] = $user->user_login;
+		}
+		if ( in_array( 'email', $scopes, true ) ) {
+			$claims['email']          = $user->user_email;
+			$claims['email_verified'] = true;
+		}
+		if ( in_array( 'roles', $scopes, true ) ) {
+			/**
+			 * Filters the roles released in the "roles" claim.
+			 *
+			 * @param string[] $roles Role slugs of the user.
+			 * @param WP_User  $user  The user.
+			 */
+			$roles           = apply_filters( 'keystone_oidc_user_roles', array_values( (array) $user->roles ), $user );
+			$claims['roles'] = array_values( array_map( 'strval', (array) $roles ) );
+		}
+
+		return $claims;
 	}
 
 	/**
