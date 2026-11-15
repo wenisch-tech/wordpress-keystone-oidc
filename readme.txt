@@ -2,8 +2,8 @@
 Contributors: jfwenisch
 Tags: oidc, openid-connect, sso, authentication, oauth2
 Requires at least: 5.6
-Tested up to: 7.1.3
-Stable tag: 2.3.6
+Tested up to: 7.1.4
+Stable tag: 2.4.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -104,6 +104,16 @@ All previously issued tokens will immediately become invalid. Use the **Settings
 Yes, both `S256` and `plain` code challenge methods are supported.
 
 == Changelog ==
+
+= 2.4.0 =
+## [2.4.0](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v2.3.6...v2.4.0) (2026-11-15)
+
+
+### Features
+
+* add roles scope to expose WordPress roles as an OIDC claim ([e51cde5](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/e51cde549fc56dfed54e8c34620cd4ef740f39f1))
+
+
 
 = 2.3.6 =
 ### [2.3.6](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v2.3.5...v2.3.6) (2026-10-18)
