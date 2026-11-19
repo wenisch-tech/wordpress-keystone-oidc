@@ -19,6 +19,10 @@ Earlier versions only checked the client secret when one was sent. A request tha
 - Unknown `code_challenge_method` values and malformed challenges or verifiers are rejected instead of being treated as `plain`.
 - Discovery now lists `none` among the token endpoint authentication methods.
 
+## Redirect URIs for native apps
+
+Public clients may register reverse-domain private-use schemes such as `com.example.app:/oauth2redirect`, see [Native apps](Client-Types.md#native-apps-private-use-uri-schemes). Redirect URIs are now validated when a client is saved: an invalid URI is rejected with an error instead of being stored as an empty entry. Existing clients keep working. The authorize endpoint also no longer redirects an `unsupported_response_type` error to a `redirect_uri` that is not registered.
+
 ## Extension hooks and token revocation
 
 New filters and actions let you customize sign-in, claims and token lifetimes, see [Extending with hooks](Extending.md). Two behaviors change even if you use no hook:

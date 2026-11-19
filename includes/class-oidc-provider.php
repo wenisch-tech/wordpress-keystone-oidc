@@ -214,7 +214,7 @@ class KEYSTONE_OIDC_Provider {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
 		$response_type         = isset( $_GET['response_type'] ) ? sanitize_text_field( wp_unslash( $_GET['response_type'] ) ) : '';
 		$client_id             = isset( $_GET['client_id'] ) ? sanitize_text_field( wp_unslash( $_GET['client_id'] ) ) : '';
-		$redirect_uri          = isset( $_GET['redirect_uri'] ) ? esc_url_raw( wp_unslash( $_GET['redirect_uri'] ) ) : '';
+		$redirect_uri          = isset( $_GET['redirect_uri'] ) ? KEYSTONE_OIDC_Client_Manager::normalize_request_redirect_uri( wp_unslash( $_GET['redirect_uri'] ) ) : '';
 		$scope                 = isset( $_GET['scope'] ) ? sanitize_text_field( wp_unslash( $_GET['scope'] ) ) : 'openid';
 		$state                 = isset( $_GET['state'] ) ? keystone_oidc_sanitize_oauth2_state( wp_unslash( $_GET['state'] ) ) : '';
 		$nonce                 = isset( $_GET['nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['nonce'] ) ) : null;
@@ -228,11 +228,6 @@ class KEYSTONE_OIDC_Provider {
 		}
 		// phpcs:enable
 
-		if ( 'code' !== $response_type ) {
-			$this->redirect_with_error( $redirect_uri, 'unsupported_response_type', 'Only "code" response_type is supported.', $state );
-			return;
-		}
-
 		$client = KEYSTONE_OIDC_Client_Manager::get_client( $client_id );
 		if ( ! $client ) {
 			$this->send_json_error( array( 'error' => 'invalid_client', 'error_description' => 'Unknown client.' ), 400 );
@@ -241,6 +236,12 @@ class KEYSTONE_OIDC_Provider {
 
 		if ( ! KEYSTONE_OIDC_Client_Manager::validate_redirect_uri( $client_id, $redirect_uri ) ) {
 			$this->send_json_error( array( 'error' => 'invalid_request', 'error_description' => 'Invalid redirect_uri.' ), 400 );
+			return;
+		}
+
+		// Only redirect errors to the client once the redirect_uri is verified.
+		if ( 'code' !== $response_type ) {
+			$this->redirect_with_error( $redirect_uri, 'unsupported_response_type', 'Only "code" response_type is supported.', $state );
 			return;
 		}
 
@@ -405,7 +406,7 @@ class KEYSTONE_OIDC_Provider {
 
 		$grant_type    = isset( $_POST['grant_type'] ) ? sanitize_text_field( wp_unslash( $_POST['grant_type'] ) ) : '';
 		$code          = isset( $_POST['code'] ) ? sanitize_text_field( wp_unslash( $_POST['code'] ) ) : '';
-		$redirect_uri  = isset( $_POST['redirect_uri'] ) ? esc_url_raw( wp_unslash( $_POST['redirect_uri'] ) ) : '';
+		$redirect_uri  = isset( $_POST['redirect_uri'] ) ? KEYSTONE_OIDC_Client_Manager::normalize_request_redirect_uri( wp_unslash( $_POST['redirect_uri'] ) ) : '';
 		$refresh_token = isset( $_POST['refresh_token'] ) ? sanitize_text_field( wp_unslash( $_POST['refresh_token'] ) ) : '';
 		$code_verifier = isset( $_POST['code_verifier'] ) ? sanitize_text_field( wp_unslash( $_POST['code_verifier'] ) ) : null;
 		// phpcs:enable

@@ -262,7 +262,7 @@ add_action( 'remove_user_role', function ( $user_id, $role ) {
 - **Keep filters fast.** They run on sign-in, on every refresh and, for UserInfo claims, on every UserInfo call. Avoid remote requests.
 - **Don't leak internals** in `WP_Error` messages. They reach the client application.
 - **Hooks run on trusted code paths only.** They are not a replacement for scope or client settings, which stay enforced by the plugin.
-- **Not covered yet:** the redirect URI rules and the client type are not filterable. Custom URI schemes for native apps are tracked separately.
+- **Not covered:** the redirect URI rules and the client type are not filterable.
 
 ## Troubleshooting hooks
 

@@ -59,6 +59,8 @@ $keystone_oidc_title = $keystone_oidc_is_edit
 
 	<?php if ( $keystone_oidc_error === 'missing_fields' ) : ?>
 		<div class="notice notice-error"><p><?php esc_html_e( 'Please fill in all required fields.', 'keystone-oidc' ); ?></p></div>
+	<?php elseif ( $keystone_oidc_error === 'invalid_redirect_uri' ) : ?>
+		<div class="notice notice-error"><p><?php esc_html_e( 'A redirect URI is invalid. Use http(s) URLs, or for public clients a reverse-domain scheme such as com.example.app:/callback (no fragments or spaces).', 'keystone-oidc' ); ?></p></div>
 	<?php elseif ( $keystone_oidc_error === 'db_error' ) : ?>
 		<div class="notice notice-error"><p><?php esc_html_e( 'A database error occurred. Please try again.', 'keystone-oidc' ); ?></p></div>
 	<?php elseif ( $keystone_oidc_error === 'reset_failed' ) : ?>
@@ -170,7 +172,7 @@ $keystone_oidc_title = $keystone_oidc_is_edit
 					<td>
 						<textarea id="redirect_uris" name="redirect_uris" rows="4" class="large-text code"
 							placeholder="https://example.com/callback" required><?php echo esc_textarea( $keystone_oidc_redirect_uris_text ); ?></textarea>
-						<p class="description"><?php esc_html_e( 'One URI per line. These are the allowed callback URLs after authorization.', 'keystone-oidc' ); ?></p>
+						<p class="description"><?php esc_html_e( 'One URI per line. These are the allowed callback URLs after authorization. Native apps (public clients) may use a reverse-domain scheme such as com.example.app:/oauth2redirect.', 'keystone-oidc' ); ?></p>
 					</td>
 				</tr>
 				<tr>
