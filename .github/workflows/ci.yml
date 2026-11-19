@@ -15,6 +15,7 @@ permissions:
 # ─────────────────────────────────────────────────────────────────────────────
 # Orchestrator: computes version/tag on every push, then delegates to the
 # reusable release workflow when merging to main.
+#   build        — installable test ZIP as a workflow artifact (branches, PRs)
 #   _release.yml — version bump, changelog, zip build, GitHub release, WordPress.org SVN publish
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -59,9 +60,42 @@ jobs:
 
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             version="${version}-pr.${{ github.event.number }}.${{ github.run_number }}"
+          elif [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            # Feature branch / manual run: drop any branch-derived pre-release
+            # suffix from the tag action and use a short, predictable one.
+            version="${version%%-*}-dev.${{ github.run_number }}"
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  # Test build: every branch and pull request gets an installable ZIP as a
+  # workflow artifact, so a change can be tested without an official release.
+  build:
+    if: github.ref != 'refs/heads/main' || github.event_name != 'push'
+    needs:
+      - versioning
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build plugin ZIP
+        env:
+          VERSION: ${{ needs.versioning.outputs.version }}
+        run: |
+          set -euo pipefail
+          .github/scripts/build-dev-zip.sh "${VERSION}" "keystone-oidc-${VERSION}.zip"
+          unzip -l "keystone-oidc-${VERSION}.zip" | tail -n 3
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: keystone-oidc-${{ needs.versioning.outputs.version }}
+          path: keystone-oidc-${{ needs.versioning.outputs.version }}.zip
+          if-no-files-found: error
+          retention-days: 14
 
   release:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip ci]')
