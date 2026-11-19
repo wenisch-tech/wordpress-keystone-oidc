@@ -1,5 +1,35 @@
 == Changelog ==
 
+= 3.0.0 =
+## [3.0.0](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v2.4.1...v3.0.0) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **security:** the token endpoint previously accepted requests without a
+client secret for any client. Confidential clients must now authenticate on
+every token request (authorization_code and refresh_token grants), otherwise
+they get 401 invalid_client. Public clients must use S256 PKCE.
+
+Every client now has a type (confidential or public). Existing clients are
+migrated to confidential, so clients that relied on PKCE without a secret
+(SPAs, mobile apps) must be switched to "Public" in the admin UI.
+
+Also: reject unknown code_challenge_method values and malformed PKCE
+challenges/verifiers, URL-decode HTTP Basic credentials, reject client_id
+mismatches between header and body, advertise "none" in discovery.
+
+Add Docusaurus documentation (docs/, docs-site/) and a GitHub Pages workflow.
+
+### Bug Fixes
+
+* **security:** require client authentication at the token endpoint ([9293c3d](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/9293c3de275048fae10607c5faf6a11308ab5af0))
+* update docs from this branch ([c8c792b](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/c8c792bd7f6916d61a95dba622e580ccc773f89c))
+* updated docs config ([698e1a1](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/698e1a19c3113aacc307aea7339b3bf8d42b09e0))
+* **docs:** add missing @mermaid-js/layout-elk dependency ([a9fc9c6](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/a9fc9c65d0c997ebcd62ca231c9249a4131cc87a))
+
+
+
 = 2.4.1 =
 ### [2.4.1](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v2.4.0...v2.4.1) (2026-11-18)
 
