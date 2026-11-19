@@ -395,6 +395,20 @@ The `sub` claim is always the WordPress user's numeric ID (as a string), ensurin
 
 The `roles` claim contains the user's WordPress role slugs (e.g. `administrator`, `editor`). WordPress has no native groups, so no `groups` claim is emitted. Plugins can adjust the released roles with the `keystone_oidc_user_roles` filter.
 
+### Hooks for developers
+
+Full reference with examples: [Extending with hooks](docs/Extending.md).
+
+| Hook | Type | Purpose |
+|---|---|---|
+| `keystone_oidc_authorize_user( $allowed, $user, $client_id, $scope )` | filter | Return `false`/`WP_Error` to answer `access_denied` before a code is issued. |
+| `keystone_oidc_refresh_allowed( $allowed, $user_id, $client_id )` | filter | Return `false`/`WP_Error` to reject a refresh with `invalid_grant`. Deleted users are always rejected. |
+| `keystone_oidc_id_token_claims`, `keystone_oidc_access_token_claims`, `keystone_oidc_userinfo_claims` `( $claims, $user, $client_id, $scopes )` | filter | Add or change claims. `iss`, `sub`, `aud`, `exp`, `iat`, `jti` and `nonce` cannot be overridden. |
+| `keystone_oidc_auth_code_lifetime`, `keystone_oidc_access_token_lifetime`, `keystone_oidc_refresh_token_lifetime` `( $seconds, $client_id )` | filter | Change token lifetimes (defaults: 600 / 3600 / 2592000). |
+| `keystone_oidc_tokens_revoked( $user_id, $client_id, $count )` | action | Fires after `KEYSTONE_OIDC_Token_Manager::revoke_user_tokens( $user_id, $client_id = null )`. |
+
+Tokens are revoked automatically when a user is deleted, resets their password, or changes it in their profile.
+
 ---
 
 ## Releases & CI pipeline
