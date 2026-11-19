@@ -2,7 +2,7 @@ name: Documentation
 
 on:
   push:
-    branches: [main]
+    branches: [main, 15-token-endpoint-accepts-a-confidential-client-without-its-client-secret]
     paths: ['docs/**', 'docs-site/**', '.github/workflows/docs-pages.yml']
   pull_request:
     paths: ['docs/**', 'docs-site/**', '.github/workflows/docs-pages.yml']
@@ -33,14 +33,14 @@ jobs:
         working-directory: docs-site
         run: npm run build
       - name: Upload Pages artifact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/15-token-endpoint-accepts-a-confidential-client-without-its-client-secret')
         uses: actions/upload-pages-artifact@v5
         with:
           path: docs-site/build
 
   deploy:
     needs: build
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/15-token-endpoint-accepts-a-confidential-client-without-its-client-secret')
     runs-on: ubuntu-latest
     permissions:
       pages: write
