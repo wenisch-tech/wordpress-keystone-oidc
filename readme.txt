@@ -3,7 +3,7 @@ Contributors: jfwenisch
 Tags: oidc, openid-connect, sso, authentication, oauth2
 Requires at least: 5.6
 Tested up to: 7.1.5
-Stable tag: 3.0.0
+Stable tag: 3.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -112,6 +112,17 @@ Yes, both `S256` and `plain` code challenge methods are supported. Public client
 A confidential client is a server-side application that can keep a secret. A public client (single-page or mobile app) cannot, so it uses PKCE instead. Set the type per client under OIDC Provider > Clients. Existing clients are treated as confidential after an update.
 
 == Changelog ==
+
+= 3.0.1 =
+### [3.0.1](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v3.0.0...v3.0.1) (2026-11-19)
+
+
+### Documentation
+
+* Added documentation link ([a54ba89](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/a54ba8955783cc7c75e921ba785f3e45f7158b4d))
+* added link to readme ([5cf8e63](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/5cf8e63e5803de716ca23708457bdd002d12e4c9))
+
+
 
 = 3.0.0 =
 ## [3.0.0](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v2.4.1...v3.0.0) (2026-11-19)

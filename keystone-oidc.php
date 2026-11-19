@@ -3,7 +3,7 @@
  * Plugin Name: Keystone OIDC
  * Plugin URI: https://github.com/wenisch-tech/wordpress-keystone-oidc
  * Description: Turn your WordPress site into an OIDC identity provider and manage unlimited clients through a simple admin panel.
- * Version: 3.0.0
+ * Version: 3.0.1
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: Jean-Fabian Wenisch
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'KEYSTONE_OIDC_VERSION', '3.0.0' );
+define( 'KEYSTONE_OIDC_VERSION', '3.0.1' );
 // Bump when the database schema changes; triggers KEYSTONE_OIDC_Client_Manager::maybe_upgrade().
 define( 'KEYSTONE_OIDC_DB_VERSION', '2' );
 define( 'KEYSTONE_OIDC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
