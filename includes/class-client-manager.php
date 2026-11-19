@@ -56,8 +56,9 @@ class KEYSTONE_OIDC_Client_Manager {
 				client_name   VARCHAR(255)    NOT NULL,
 				redirect_uris LONGTEXT        NOT NULL,
 				allowed_scopes VARCHAR(500)   NOT NULL DEFAULT 'openid profile email',
+				client_type   VARCHAR(20)     NOT NULL DEFAULT 'confidential',
 				created_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				updated_at    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+				updated_at   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 				PRIMARY KEY (id),
 				UNIQUE KEY client_id (client_id)
 			) {$charset_collate};"
@@ -98,6 +99,19 @@ class KEYSTONE_OIDC_Client_Manager {
 				UNIQUE KEY token_hash (token_hash)
 			) {$charset_collate};"
 		);
+	}
+
+	/**
+	 * Run schema upgrades for installs that updated without re-activating.
+	 * dbDelta adds the client_type column; existing rows default to 'confidential'.
+	 */
+	public static function maybe_upgrade() {
+		if ( get_option( 'keystone_oidc_db_version' ) === KEYSTONE_OIDC_DB_VERSION ) {
+			return;
+		}
+		self::create_tables();
+		self::invalidate_client_cache();
+		update_option( 'keystone_oidc_db_version', KEYSTONE_OIDC_DB_VERSION );
 	}
 
 	/**
@@ -154,14 +168,35 @@ class KEYSTONE_OIDC_Client_Manager {
 	}
 
 	/**
+	 * Normalise a client type. Anything other than "public" is confidential.
+	 *
+	 * @param string $type Requested type.
+	 * @return string 'public' or 'confidential'.
+	 */
+	public static function sanitize_client_type( $type ) {
+		return 'public' === $type ? 'public' : 'confidential';
+	}
+
+	/**
+	 * Whether a client is public (cannot keep a secret; must use PKCE).
+	 *
+	 * @param object $client Client row.
+	 * @return bool
+	 */
+	public static function is_public( $client ) {
+		return isset( $client->client_type ) && 'public' === $client->client_type;
+	}
+
+	/**
 	 * Create a new OIDC client.
 	 *
 	 * @param string $name          Client name.
 	 * @param array  $redirect_uris Array of redirect URIs.
 	 * @param string $allowed_scopes Space-separated scopes.
+	 * @param string $client_type   'confidential' (default) or 'public'.
 	 * @return array|WP_Error Array with 'client_id' and 'client_secret' (plaintext) on success.
 	 */
-	public static function create_client( $name, array $redirect_uris, $allowed_scopes = 'openid profile email' ) {
+	public static function create_client( $name, array $redirect_uris, $allowed_scopes = 'openid profile email', $client_type = 'confidential' ) {
 		global $wpdb;
 
 		$plain_secret = self::generate_secret_plain();
@@ -177,8 +212,9 @@ class KEYSTONE_OIDC_Client_Manager {
 				'client_name'   => sanitize_text_field( $name ),
 				'redirect_uris' => wp_json_encode( array_map( 'esc_url_raw', $redirect_uris ) ),
 				'allowed_scopes' => sanitize_text_field( $allowed_scopes ),
+				'client_type'   => self::sanitize_client_type( $client_type ),
 			),
-			array( '%s', '%s', '%s', '%s', '%s' )
+			array( '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 
 		if ( false === $result ) {
@@ -200,9 +236,10 @@ class KEYSTONE_OIDC_Client_Manager {
 	 * @param string $name           Client name.
 	 * @param array  $redirect_uris  Array of redirect URIs.
 	 * @param string $allowed_scopes Space-separated scopes.
+	 * @param string $client_type    'confidential' or 'public'.
 	 * @return bool|WP_Error
 	 */
-	public static function update_client( $client_id, $name, array $redirect_uris, $allowed_scopes ) {
+	public static function update_client( $client_id, $name, array $redirect_uris, $allowed_scopes, $client_type = 'confidential' ) {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -212,9 +249,10 @@ class KEYSTONE_OIDC_Client_Manager {
 				'client_name'   => sanitize_text_field( $name ),
 				'redirect_uris' => wp_json_encode( array_map( 'esc_url_raw', $redirect_uris ) ),
 				'allowed_scopes' => sanitize_text_field( $allowed_scopes ),
+				'client_type'   => self::sanitize_client_type( $client_type ),
 			),
 			array( 'client_id' => $client_id ),
-			array( '%s', '%s', '%s' ),
+			array( '%s', '%s', '%s', '%s' ),
 			array( '%s' )
 		);
 

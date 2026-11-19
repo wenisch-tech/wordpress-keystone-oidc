@@ -191,6 +191,7 @@ jobs:
             --exclude='assets' \
             --exclude='.gitignore' \
             --exclude='docs' \
+            --exclude='docs-site' \
             --exclude='*.zip' \
             . "/tmp/${PLUGIN_DIR}/"
 
@@ -252,6 +253,7 @@ jobs:
             --exclude='assets' \
             --exclude='.gitignore' \
             --exclude='docs' \
+            --exclude='docs-site' \
             --exclude='*.zip' \
             . "${SVN_DIR}/trunk/"
 

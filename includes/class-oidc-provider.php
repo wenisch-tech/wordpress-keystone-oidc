@@ -59,6 +59,7 @@ class KEYSTONE_OIDC_Provider {
 	}
 
 	public function __construct() {
+		add_action( 'plugins_loaded', array( 'KEYSTONE_OIDC_Client_Manager', 'maybe_upgrade' ) );
 		add_action( 'init', array( $this, 'register_rewrite_rules' ) );
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
 		add_filter( 'redirect_canonical', array( $this, 'disable_canonical_redirect_for_oidc' ), 10, 2 );
@@ -192,7 +193,7 @@ class KEYSTONE_OIDC_Provider {
 			'grant_types_supported'                 => array( 'authorization_code', 'refresh_token' ),
 			'subject_types_supported'               => array( 'public' ),
 			'id_token_signing_alg_values_supported' => array( 'RS256' ),
-			'token_endpoint_auth_methods_supported' => array( 'client_secret_basic', 'client_secret_post' ),
+			'token_endpoint_auth_methods_supported' => array( 'client_secret_basic', 'client_secret_post', 'none' ),
 			'claims_supported'                      => array( 'sub', 'iss', 'aud', 'iat', 'exp', 'name', 'given_name', 'family_name', 'preferred_username', 'email', 'email_verified', 'roles' ),
 			'code_challenge_methods_supported'      => array( 'S256', 'plain' ),
 		);
@@ -237,6 +238,20 @@ class KEYSTONE_OIDC_Provider {
 
 		if ( ! KEYSTONE_OIDC_Client_Manager::validate_redirect_uri( $client_id, $redirect_uri ) ) {
 			$this->send_json_error( array( 'error' => 'invalid_request', 'error_description' => 'Invalid redirect_uri.' ), 400 );
+			return;
+		}
+
+		// PKCE parameter validation (RFC 7636).
+		if ( null !== $code_challenge_method && ! in_array( $code_challenge_method, array( 'S256', 'plain' ), true ) ) {
+			$this->redirect_with_error( $redirect_uri, 'invalid_request', 'Unsupported code_challenge_method.', $state );
+			return;
+		}
+		if ( $code_challenge && ! KEYSTONE_OIDC_Token_Manager::is_valid_pkce_value( $code_challenge ) ) {
+			$this->redirect_with_error( $redirect_uri, 'invalid_request', 'Malformed code_challenge.', $state );
+			return;
+		}
+		if ( KEYSTONE_OIDC_Client_Manager::is_public( $client ) && ( ! $code_challenge || 'S256' !== $code_challenge_method ) ) {
+			$this->redirect_with_error( $redirect_uri, 'invalid_request', 'Public clients must use PKCE with code_challenge_method=S256.', $state );
 			return;
 		}
 
@@ -343,18 +358,26 @@ class KEYSTONE_OIDC_Provider {
 		$client_id     = '';
 		$client_secret = '';
 
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$body_client_id = isset( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( $_POST['client_id'] ) ) : '';
+
 		$auth_header = isset( $_SERVER['HTTP_AUTHORIZATION'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_AUTHORIZATION'] ) ) : '';
 		if ( $auth_header && 0 === strpos( $auth_header, 'Basic ' ) ) {
-			$decoded = base64_decode( substr( $auth_header, 6 ) );
+			$decoded = base64_decode( substr( $auth_header, 6 ), true );
 			if ( false !== $decoded && strpos( $decoded, ':' ) !== false ) {
 				list( $client_id, $client_secret ) = explode( ':', $decoded, 2 );
+				// RFC 6749 §2.3.1: credentials are form-urlencoded before Base64.
+				$client_id     = urldecode( $client_id );
+				$client_secret = urldecode( $client_secret );
+				if ( '' !== $body_client_id && $body_client_id !== $client_id ) {
+					$this->send_json_error( array( 'error' => 'invalid_request', 'error_description' => 'client_id mismatch between Authorization header and body.' ), 400 );
+					return;
+				}
 			}
 		}
 
-		// Token requests are authenticated by client credentials or PKCE.
-		// phpcs:disable WordPress.Security.NonceVerification.Missing
 		if ( ! $client_id ) {
-			$client_id     = isset( $_POST['client_id'] ) ? sanitize_text_field( wp_unslash( $_POST['client_id'] ) ) : '';
+			$client_id     = $body_client_id;
 			$client_secret = isset( $_POST['client_secret'] ) ? sanitize_text_field( wp_unslash( $_POST['client_secret'] ) ) : '';
 		}
 
@@ -371,16 +394,20 @@ class KEYSTONE_OIDC_Provider {
 			return;
 		}
 
-		if ( $client_secret ) {
-			if ( ! KEYSTONE_OIDC_Client_Manager::verify_secret( $client_secret, $client->client_secret ) ) {
-				$this->send_json_error( array( 'error' => 'invalid_client', 'error_description' => 'Invalid client credentials.' ), 401 );
+		// Confidential clients must always authenticate. Public clients have no
+		// usable secret and are protected by PKCE instead (enforced on the code grant).
+		$is_public = KEYSTONE_OIDC_Client_Manager::is_public( $client );
+		if ( ! $is_public ) {
+			if ( '' === (string) $client_secret || ! KEYSTONE_OIDC_Client_Manager::verify_secret( $client_secret, $client->client_secret ) ) {
+				header( 'WWW-Authenticate: Basic realm="oidc", charset="UTF-8"' );
+				$this->send_json_error( array( 'error' => 'invalid_client', 'error_description' => 'Client authentication failed.' ), 401 );
 				return;
 			}
 		}
 
 		switch ( $grant_type ) {
 			case 'authorization_code':
-				$this->handle_auth_code_grant( $client_id, $code, $redirect_uri, $code_verifier );
+				$this->handle_auth_code_grant( $client_id, $code, $redirect_uri, $code_verifier, $is_public );
 				break;
 			case 'refresh_token':
 				$this->handle_refresh_token_grant( $client_id, $refresh_token );
@@ -390,8 +417,8 @@ class KEYSTONE_OIDC_Provider {
 		}
 	}
 
-	private function handle_auth_code_grant( $client_id, $code, $redirect_uri, $code_verifier ) {
-		$auth_code = KEYSTONE_OIDC_Token_Manager::consume_auth_code( $code, $client_id, $redirect_uri, $code_verifier );
+	private function handle_auth_code_grant( $client_id, $code, $redirect_uri, $code_verifier, $require_pkce = false ) {
+		$auth_code = KEYSTONE_OIDC_Token_Manager::consume_auth_code( $code, $client_id, $redirect_uri, $code_verifier, $require_pkce );
 		if ( is_wp_error( $auth_code ) ) {
 			$this->send_json_error( array( 'error' => $auth_code->get_error_code(), 'error_description' => $auth_code->get_error_message() ), 400 );
 			return;

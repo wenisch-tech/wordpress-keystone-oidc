@@ -212,6 +212,7 @@ class KEYSTONE_OIDC_Admin {
 		$name          = isset( $_POST['client_name'] ) ? sanitize_text_field( wp_unslash( $_POST['client_name'] ) ) : '';
 		$redirect_uris = isset( $_POST['redirect_uris'] ) ? sanitize_textarea_field( wp_unslash( $_POST['redirect_uris'] ) ) : '';
 		$scopes        = isset( $_POST['allowed_scopes'] ) ? sanitize_text_field( wp_unslash( $_POST['allowed_scopes'] ) ) : 'openid profile email';
+		$client_type   = KEYSTONE_OIDC_Client_Manager::sanitize_client_type( isset( $_POST['client_type'] ) ? sanitize_text_field( wp_unslash( $_POST['client_type'] ) ) : 'confidential' );
 		// phpcs:enable
 
 		if ( empty( $name ) || empty( $redirect_uris ) ) {
@@ -234,7 +235,7 @@ class KEYSTONE_OIDC_Admin {
 
 		if ( $client_id ) {
 			// Update existing.
-			$result = KEYSTONE_OIDC_Client_Manager::update_client( $client_id, $name, $uris, $scopes );
+			$result = KEYSTONE_OIDC_Client_Manager::update_client( $client_id, $name, $uris, $scopes, $client_type );
 			if ( is_wp_error( $result ) ) {
 				wp_safe_redirect( $this->get_client_redirect_url( $client_id, array( 'error' => 'db_error' ) ) );
 				exit;
@@ -242,14 +243,17 @@ class KEYSTONE_OIDC_Admin {
 			wp_safe_redirect( $this->get_client_redirect_url( $client_id, array( 'updated' => '1' ) ) );
 		} else {
 			// Create new.
-			$result = KEYSTONE_OIDC_Client_Manager::create_client( $name, $uris, $scopes );
+			$result = KEYSTONE_OIDC_Client_Manager::create_client( $name, $uris, $scopes, $client_type );
 			if ( is_wp_error( $result ) ) {
 				wp_safe_redirect( add_query_arg( array( 'page' => 'wp-oidc-add-client', 'error' => 'db_error' ), admin_url( 'admin.php' ) ) );
 				exit;
 			}
 
 			// Store plaintext secret in a transient for one-time display.
-			set_transient( 'keystone_oidc_new_secret_' . $result['client_id'], $result['client_secret'], 300 );
+			// Public clients have no usable secret, so there is nothing to show.
+			if ( 'public' !== $client_type ) {
+				set_transient( 'keystone_oidc_new_secret_' . $result['client_id'], $result['client_secret'], 300 );
+			}
 
 			wp_safe_redirect(
 				$this->get_client_redirect_url( $result['client_id'], array( 'created' => '1' ) )

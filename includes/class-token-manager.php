@@ -266,6 +266,16 @@ class KEYSTONE_OIDC_Token_Manager {
 	}
 
 	/**
+	 * RFC 7636 verifier/challenge format: 43-128 unreserved characters.
+	 *
+	 * @param string $value Value to check.
+	 * @return bool
+	 */
+	public static function is_valid_pkce_value( $value ) {
+		return (bool) preg_match( '/^[A-Za-z0-9\-._~]{43,128}$/', (string) $value );
+	}
+
+	/**
 	 * Consume an authorization code (validate and delete).
 	 *
 	 * @param string $code         Authorization code.
@@ -274,7 +284,7 @@ class KEYSTONE_OIDC_Token_Manager {
 	 * @param string $code_verifier PKCE verifier (optional).
 	 * @return object|WP_Error Auth code DB row or error.
 	 */
-	public static function consume_auth_code( $code, $client_id, $redirect_uri, $code_verifier = null ) {
+	public static function consume_auth_code( $code, $client_id, $redirect_uri, $code_verifier = null, $require_pkce = false ) {
 		global $wpdb;
 		$cache_key = self::auth_code_cache_key( $code );
 		$found     = false;
@@ -308,10 +318,18 @@ class KEYSTONE_OIDC_Token_Manager {
 			return new WP_Error( 'invalid_grant', 'Redirect URI mismatch.' );
 		}
 
+		// Public clients must always have used PKCE.
+		if ( $require_pkce && ! $row->code_challenge ) {
+			return new WP_Error( 'invalid_grant', 'PKCE is required for public clients.' );
+		}
+
 		// PKCE verification.
 		if ( $row->code_challenge ) {
 			if ( ! $code_verifier ) {
 				return new WP_Error( 'invalid_grant', 'code_verifier required.' );
+			}
+			if ( ! self::is_valid_pkce_value( $code_verifier ) ) {
+				return new WP_Error( 'invalid_grant', 'Malformed code_verifier.' );
 			}
 			if ( 'S256' === $row->code_challenge_method ) {
 				$challenge = self::base64url_encode( hash( 'sha256', $code_verifier, true ) );
