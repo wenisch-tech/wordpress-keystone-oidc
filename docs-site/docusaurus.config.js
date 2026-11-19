@@ -6,8 +6,8 @@ const config = {
   tagline: 'Turn WordPress into an OpenID Connect identity provider',
   favicon: 'img/favicon.gif',
   // Override through the environment for a custom domain or sub-path.
-  url: process.env.DOCS_URL || 'https://wenisch-tech.github.io',
-  baseUrl: process.env.DOCS_BASE_URL || '/wordpress-keystone-oidc/',
+  url: process.env.DOCS_URL || 'https://keystone-oidc.wenisch.tech',
+  baseUrl: process.env.DOCS_BASE_URL || '/',
   organizationName: 'wenisch-tech',
   projectName: 'wordpress-keystone-oidc',
   onBrokenLinks: 'throw',
