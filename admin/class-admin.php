@@ -243,7 +243,8 @@ class KEYSTONE_OIDC_Admin {
 			// Update existing.
 			$result = KEYSTONE_OIDC_Client_Manager::update_client( $client_id, $name, $uris, $scopes, $client_type );
 			if ( is_wp_error( $result ) ) {
-				wp_safe_redirect( $this->get_client_redirect_url( $client_id, array( 'error' => 'db_error' ) ) );
+				$error_code = 'invalid_redirect_uri' === $result->get_error_code() ? 'invalid_redirect_uri' : 'db_error';
+				wp_safe_redirect( $this->get_client_redirect_url( $client_id, array( 'error' => $error_code ) ) );
 				exit;
 			}
 			wp_safe_redirect( $this->get_client_redirect_url( $client_id, array( 'updated' => '1' ) ) );
@@ -251,7 +252,8 @@ class KEYSTONE_OIDC_Admin {
 			// Create new.
 			$result = KEYSTONE_OIDC_Client_Manager::create_client( $name, $uris, $scopes, $client_type );
 			if ( is_wp_error( $result ) ) {
-				wp_safe_redirect( add_query_arg( array( 'page' => 'wp-oidc-add-client', 'error' => 'db_error' ), admin_url( 'admin.php' ) ) );
+				$error_code = 'invalid_redirect_uri' === $result->get_error_code() ? 'invalid_redirect_uri' : 'db_error';
+				wp_safe_redirect( add_query_arg( array( 'page' => 'wp-oidc-add-client', 'error' => $error_code ), admin_url( 'admin.php' ) ) );
 				exit;
 			}
 

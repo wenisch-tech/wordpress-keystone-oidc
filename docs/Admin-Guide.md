@@ -15,7 +15,7 @@ title: Admin guide
 
 **Configuration**
 - *Application Name*: shown on the consent screen.
-- *Redirect URIs*: exact match, one per line, no wildcards.
+- *Redirect URIs*: exact match, one per line, no wildcards. Public clients (native apps) may also use a reverse-domain scheme such as `com.example.app:/oauth2redirect`, see [Native apps](Client-Types.md#native-apps-private-use-uri-schemes). Invalid URIs are rejected when you save.
 - *Client Type*: *Confidential* or *Public*. See [Client types](Client-Types.md).
 - *Allowed Scopes*: which scopes the client may request. `openid` is always included.
 

@@ -20,7 +20,8 @@ After that the plaintext can't be recovered, only reset.
 ## Codes and tokens
 
 - Authorization codes are single use and expire after 10 minutes. The client ID and redirect URI must match the authorization request.
-- Redirect URIs are matched exactly.
+- Redirect URIs are matched exactly. Private-use schemes for native apps are accepted for public clients only, must be reverse-domain names and are always protected by mandatory PKCE, see [Native apps](Client-Types.md#native-apps-private-use-uri-schemes).
+- The authorize endpoint only redirects an error back to the client after the `redirect_uri` has been verified against the registered list.
 - PKCE values are validated against RFC 7636 (43-128 unreserved characters). Unknown challenge methods are rejected.
 - Refresh tokens rotate on every use.
 - A user's tokens are revoked automatically when the user is deleted, resets their password or changes it. Refresh tokens of deleted users are always rejected.

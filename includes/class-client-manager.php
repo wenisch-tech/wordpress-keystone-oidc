@@ -188,6 +188,90 @@ class KEYSTONE_OIDC_Client_Manager {
 	}
 
 	/**
+	 * Sanitize and validate a list of redirect URIs for storage.
+	 *
+	 * http(s) URIs behave as before. Reverse-domain private-use schemes for
+	 * native apps (RFC 8252 section 7.1, e.g. "com.example.app:/callback") are
+	 * accepted for public clients only.
+	 *
+	 * @param array  $uris        Raw URIs.
+	 * @param string $client_type 'confidential' or 'public'.
+	 * @return string[]|WP_Error Clean URIs, or an error naming the rejected URI.
+	 */
+	public static function sanitize_redirect_uris( array $uris, $client_type = 'confidential' ) {
+		$clean = array();
+		foreach ( $uris as $uri ) {
+			$result = self::sanitize_redirect_uri( $uri, $client_type );
+			if ( '' === $result ) {
+				return new WP_Error(
+					'invalid_redirect_uri',
+					sprintf(
+						/* translators: %s: the rejected redirect URI. */
+						__( 'Invalid redirect URI: %s', 'keystone-oidc' ),
+						(string) $uri
+					)
+				);
+			}
+			$clean[] = $result;
+		}
+		return $clean;
+	}
+
+	/**
+	 * Sanitize a single redirect URI.
+	 *
+	 * @param string $uri         Raw URI.
+	 * @param string $client_type 'confidential' or 'public'.
+	 * @return string Clean URI, or '' if it is not acceptable.
+	 */
+	public static function sanitize_redirect_uri( $uri, $client_type = 'confidential' ) {
+		$uri = trim( (string) $uri );
+		if ( '' === $uri ) {
+			return '';
+		}
+
+		// Everything WordPress already accepts keeps working unchanged.
+		$clean = esc_url_raw( $uri );
+		if ( '' !== $clean ) {
+			return $clean;
+		}
+
+		if ( 'public' !== $client_type ) {
+			return '';
+		}
+
+		// Private-use scheme: only a reverse-domain scheme (it must contain a
+		// dot) followed by "/", no whitespace, control characters or
+		// fragment (RFC 6749 section 3.1.2).
+		if ( preg_match( '/[\x00-\x20\x7f#]/', $uri ) ) {
+			return '';
+		}
+		if ( ! preg_match( '#^([a-z][a-z0-9+.\-]*):/#i', $uri, $m ) ) {
+			return '';
+		}
+		$scheme = strtolower( $m[1] );
+		if ( false === strpos( $scheme, '.' ) || in_array( $scheme, array( 'javascript', 'data', 'vbscript', 'file', 'blob', 'about' ), true ) ) {
+			return '';
+		}
+
+		return $uri;
+	}
+
+	/**
+	 * Normalise a redirect_uri taken from a request.
+	 *
+	 * The result is only ever compared for exact equality with the registered
+	 * URIs, so it is not rewritten. Values with control characters are dropped.
+	 *
+	 * @param string $uri Raw request value.
+	 * @return string
+	 */
+	public static function normalize_request_redirect_uri( $uri ) {
+		$uri = trim( (string) $uri );
+		return preg_match( '/[\x00-\x1f\x7f]/', $uri ) ? '' : $uri;
+	}
+
+	/**
 	 * Create a new OIDC client.
 	 *
 	 * @param string $name          Client name.
@@ -198,6 +282,11 @@ class KEYSTONE_OIDC_Client_Manager {
 	 */
 	public static function create_client( $name, array $redirect_uris, $allowed_scopes = 'openid profile email', $client_type = 'confidential' ) {
 		global $wpdb;
+
+		$redirect_uris = self::sanitize_redirect_uris( $redirect_uris, $client_type );
+		if ( is_wp_error( $redirect_uris ) ) {
+			return $redirect_uris;
+		}
 
 		$plain_secret = self::generate_secret_plain();
 		$hashed_secret = self::hash_secret( $plain_secret );
@@ -210,7 +299,7 @@ class KEYSTONE_OIDC_Client_Manager {
 				'client_id'     => $client_id,
 				'client_secret' => $hashed_secret,
 				'client_name'   => sanitize_text_field( $name ),
-				'redirect_uris' => wp_json_encode( array_map( 'esc_url_raw', $redirect_uris ) ),
+				'redirect_uris' => wp_json_encode( $redirect_uris ),
 				'allowed_scopes' => sanitize_text_field( $allowed_scopes ),
 				'client_type'   => self::sanitize_client_type( $client_type ),
 			),
@@ -242,12 +331,17 @@ class KEYSTONE_OIDC_Client_Manager {
 	public static function update_client( $client_id, $name, array $redirect_uris, $allowed_scopes, $client_type = 'confidential' ) {
 		global $wpdb;
 
+		$redirect_uris = self::sanitize_redirect_uris( $redirect_uris, $client_type );
+		if ( is_wp_error( $redirect_uris ) ) {
+			return $redirect_uris;
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->update(
 			$wpdb->prefix . self::TABLE_CLIENTS,
 			array(
 				'client_name'   => sanitize_text_field( $name ),
-				'redirect_uris' => wp_json_encode( array_map( 'esc_url_raw', $redirect_uris ) ),
+				'redirect_uris' => wp_json_encode( $redirect_uris ),
 				'allowed_scopes' => sanitize_text_field( $allowed_scopes ),
 				'client_type'   => self::sanitize_client_type( $client_type ),
 			),
