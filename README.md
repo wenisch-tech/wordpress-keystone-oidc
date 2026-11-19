@@ -231,11 +231,14 @@ Displays read-only information about the server:
 
 Refresh tokens use **single-use rotation**: each time a refresh token is used, it is revoked and a new one is issued alongside a fresh access token.
 
-### PKCE support
+### Client types & PKCE
 
-[Proof Key for Code Exchange](https://datatracker.ietf.org/doc/html/rfc7636) protects public clients (e.g. SPAs, mobile apps) that cannot safely store a client secret.
+Every client is **confidential** (server-side app with a secret) or **public** (SPA / mobile app, no secret).
 
-When the authorization request includes a `code_challenge`, the plugin stores it alongside the auth code. The token endpoint then validates the `code_verifier` before issuing tokens. Both `S256` (SHA-256 hash, preferred) and `plain` methods are supported.
+- **Confidential** clients must authenticate at the token endpoint on every request (`invalid_client` otherwise). PKCE is optional and verified when used.
+- **Public** clients have no secret and must use [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) with `S256` on `/authorize` and send the matching `code_verifier` at the token endpoint.
+
+Existing clients are migrated to *confidential*; see the [upgrade notes](docs/Upgrading.md). Full documentation lives in the [`docs/`](docs/README.md) folder and is published with Docusaurus.
 
 ### Signing keys
 
@@ -285,7 +288,7 @@ Returns the [OIDC Discovery document](https://openid.net/specs/openid-connect-di
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
   "id_token_signing_alg_values_supported": ["RS256"],
-  "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post"],
+  "token_endpoint_auth_methods_supported": ["client_secret_basic", "client_secret_post", "none"],
   "code_challenge_methods_supported": ["S256", "plain"]
 }
 ```
@@ -302,16 +305,18 @@ Starts the authorization flow. Required parameters:
 | `scope` | ✅ | Space-separated; must include `openid` |
 | `state` | recommended | Opaque value echoed back to prevent CSRF |
 | `nonce` | recommended | Included in the ID token to prevent replay |
-| `code_challenge` | PKCE | Base64url-encoded challenge |
-| `code_challenge_method` | PKCE | `S256` or `plain` |
+| `code_challenge` | PKCE (required for public clients) | Base64url-encoded challenge |
+| `code_challenge_method` | PKCE | `S256` or `plain` (`S256` only for public clients) |
 
 ### `POST /wenisch-tech/keystone-oidc/oauth/token`
 
 Exchanges an authorization code or refresh token for tokens.
 
-**Client authentication** – choose one:
+**Client authentication** – confidential clients must send one of:
 - HTTP Basic Authentication: `Authorization: Basic base64(client_id:client_secret)`
 - POST body parameters: `client_id` + `client_secret`
+
+Public clients send only `client_id` plus a PKCE `code_verifier`.
 
 **Authorization Code grant** (`grant_type=authorization_code`):
 
@@ -321,7 +326,7 @@ Exchanges an authorization code or refresh token for tokens.
 | `code` | ✅ | Authorization code from the authorize endpoint |
 | `redirect_uri` | ✅ | Must match the value used in the authorize request |
 | `client_id` | ✅ | |
-| `code_verifier` | PKCE | Required if `code_challenge` was used |
+| `code_verifier` | PKCE | Required if `code_challenge` was used, and always for public clients |
 
 **Refresh Token grant** (`grant_type=refresh_token`):
 

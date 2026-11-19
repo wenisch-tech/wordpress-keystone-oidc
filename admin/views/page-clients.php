@@ -52,6 +52,7 @@ $keystone_oidc_deleted = isset( $_GET['deleted'] ) && '1' === $_GET['deleted'];
 				<tr>
 					<th scope="col" class="column-name"><?php esc_html_e( 'Application Name', 'keystone-oidc' ); ?></th>
 					<th scope="col" class="column-client-id"><?php esc_html_e( 'Client ID', 'keystone-oidc' ); ?></th>
+					<th scope="col" class="column-type"><?php esc_html_e( 'Type', 'keystone-oidc' ); ?></th>
 					<th scope="col" class="column-scopes"><?php esc_html_e( 'Scopes', 'keystone-oidc' ); ?></th>
 					<th scope="col" class="column-created"><?php esc_html_e( 'Created', 'keystone-oidc' ); ?></th>
 					<th scope="col" class="column-actions"><?php esc_html_e( 'Actions', 'keystone-oidc' ); ?></th>
@@ -69,6 +70,9 @@ $keystone_oidc_deleted = isset( $_GET['deleted'] ) && '1' === $_GET['deleted'];
 						</td>
 						<td class="column-client-id">
 							<code><?php echo esc_html( $keystone_oidc_client_row->client_id ); ?></code>
+						</td>
+						<td class="column-type">
+							<?php echo KEYSTONE_OIDC_Client_Manager::is_public( $keystone_oidc_client_row ) ? esc_html__( 'Public', 'keystone-oidc' ) : esc_html__( 'Confidential', 'keystone-oidc' ); ?>
 						</td>
 						<td class="column-scopes">
 							<?php

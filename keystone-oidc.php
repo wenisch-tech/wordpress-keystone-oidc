@@ -18,6 +18,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'KEYSTONE_OIDC_VERSION', '2.4.1' );
+// Bump when the database schema changes; triggers KEYSTONE_OIDC_Client_Manager::maybe_upgrade().
+define( 'KEYSTONE_OIDC_DB_VERSION', '2' );
 define( 'KEYSTONE_OIDC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'KEYSTONE_OIDC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'KEYSTONE_OIDC_PLUGIN_FILE', __FILE__ );

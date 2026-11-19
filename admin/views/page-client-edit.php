@@ -98,6 +98,12 @@ $keystone_oidc_title = $keystone_oidc_is_edit
 						</button>
 					</td>
 				</tr>
+				<?php if ( KEYSTONE_OIDC_Client_Manager::is_public( $client ) ) : ?>
+				<tr>
+					<th><?php esc_html_e( 'Client Secret', 'keystone-oidc' ); ?></th>
+					<td><em><?php esc_html_e( 'None – public client (PKCE with S256 required).', 'keystone-oidc' ); ?></em></td>
+				</tr>
+				<?php else : ?>
 				<tr>
 					<th><?php esc_html_e( 'Client Secret', 'keystone-oidc' ); ?></th>
 					<td>
@@ -113,6 +119,7 @@ $keystone_oidc_title = $keystone_oidc_is_edit
 						</form>
 					</td>
 				</tr>
+				<?php endif; ?>
 				<tr>
 					<th><?php esc_html_e( 'Discovery URL', 'keystone-oidc' ); ?></th>
 					<td>
@@ -164,6 +171,19 @@ $keystone_oidc_title = $keystone_oidc_is_edit
 						<textarea id="redirect_uris" name="redirect_uris" rows="4" class="large-text code"
 							placeholder="https://example.com/callback" required><?php echo esc_textarea( $keystone_oidc_redirect_uris_text ); ?></textarea>
 						<p class="description"><?php esc_html_e( 'One URI per line. These are the allowed callback URLs after authorization.', 'keystone-oidc' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="client_type"><?php esc_html_e( 'Client Type', 'keystone-oidc' ); ?></label>
+					</th>
+					<td>
+						<?php $keystone_oidc_client_type = $keystone_oidc_is_edit && KEYSTONE_OIDC_Client_Manager::is_public( $client ) ? 'public' : 'confidential'; ?>
+						<select id="client_type" name="client_type">
+							<option value="confidential" <?php selected( $keystone_oidc_client_type, 'confidential' ); ?>><?php esc_html_e( 'Confidential (server-side app with a client secret)', 'keystone-oidc' ); ?></option>
+							<option value="public" <?php selected( $keystone_oidc_client_type, 'public' ); ?>><?php esc_html_e( 'Public (SPA / mobile app, no secret, PKCE required)', 'keystone-oidc' ); ?></option>
+						</select>
+						<p class="description"><?php esc_html_e( 'Confidential clients must authenticate with their secret at the token endpoint. Public clients cannot keep a secret and must use PKCE (S256).', 'keystone-oidc' ); ?></p>
 					</td>
 				</tr>
 				<tr>

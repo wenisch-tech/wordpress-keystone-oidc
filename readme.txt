@@ -81,7 +81,7 @@ Alternatively, download the `keystone-oidc.zip` from the [GitHub Releases](https
 
 = What OIDC flows are supported? =
 
-Authorization Code Flow (with and without PKCE). This is the most secure flow and suitable for all application types.
+Authorization Code Flow (confidential clients authenticate with their secret, public clients use PKCE). This is the most secure flow and suitable for all application types.
 
 = Where is the client secret stored? =
 
@@ -101,7 +101,11 @@ All previously issued tokens will immediately become invalid. Use the **Settings
 
 = Is PKCE supported? =
 
-Yes, both `S256` and `plain` code challenge methods are supported.
+Yes, both `S256` and `plain` code challenge methods are supported. Public clients (no secret) must use `S256`. Confidential clients must always authenticate with their client secret at the token endpoint.
+
+= What are public and confidential clients? =
+
+A confidential client is a server-side application that can keep a secret. A public client (single-page or mobile app) cannot, so it uses PKCE instead. Set the type per client under OIDC Provider > Clients. Existing clients are treated as confidential after an update.
 
 == Changelog ==
 
