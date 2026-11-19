@@ -2,6 +2,7 @@
 
 [![Release](https://github.com/wenisch-tech/wordpress-keystone-oidc/actions/workflows/ci.yml/badge.svg)](https://github.com/wenisch-tech/wordpress-keystone-oidc/actions/workflows/ci.yml)
 [![Latest Release](https://img.shields.io/github/v/release/wenisch-tech/wordpress-keystone-oidc?label=release)](https://github.com/wenisch-tech/wordpress-keystone-oidc/releases/latest)
+[![Documentation](https://img.shields.io/badge/docs-keystone--oidc.wenisch.tech-066f87)](https://keystone-oidc.wenisch.tech/)
 
 <p align="center">
   <img src="assets/logo-animation.gif" alt="Keystone OIDC logo animation: a keystone locks into an arch, the keyhole unlocks into a user who signs in to three apps" width="220">
