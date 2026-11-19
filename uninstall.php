@@ -22,3 +22,4 @@ delete_option( 'keystone_oidc_private_key' );
 delete_option( 'keystone_oidc_public_key' );
 delete_option( 'keystone_oidc_key_id' );
 delete_option( 'keystone_oidc_issuer' );
+delete_option( 'keystone_oidc_db_version' );
