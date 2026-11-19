@@ -38,6 +38,8 @@ sequenceDiagram
 
 Each refresh token is revoked when used, and a new one is issued together with a fresh access token.
 
+The lifetimes can be changed with filters, see [Token lifetimes](Extending.md#token-lifetimes). A user's tokens are revoked when the user is deleted or changes or resets their password, see [Revoking tokens](Extending.md#revoking-tokens).
+
 ## Signing keys
 
 On activation the plugin generates an RSA-2048 key pair. The private key stays in the options table; the public key is published at the JWKS endpoint, so clients verify tokens without any shared secret. The `kid` header in each JWT identifies the signing key.

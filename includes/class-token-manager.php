@@ -243,7 +243,7 @@ class KEYSTONE_OIDC_Token_Manager {
 		global $wpdb;
 
 		$code       = bin2hex( random_bytes( 32 ) );
-		$expires_at = gmdate( 'Y-m-d H:i:s', time() + self::AUTH_CODE_LIFETIME );
+		$expires_at = gmdate( 'Y-m-d H:i:s', time() + self::get_lifetime( 'auth_code', $client_id ) );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->insert(
@@ -354,54 +354,185 @@ class KEYSTONE_OIDC_Token_Manager {
 	 * @return array Array with 'access_token', 'id_token', 'refresh_token', 'expires_in'.
 	 */
 	public static function issue_tokens( $client_id, $user_id, $scope, $nonce = null ) {
-		$issuer = self::get_issuer();
-		$now    = time();
+		$issuer  = self::get_issuer();
+		$now     = time();
+		$scopes  = explode( ' ', $scope );
+		$user    = get_userdata( $user_id );
+		$access_lifetime  = self::get_lifetime( 'access_token', $client_id );
+		$refresh_lifetime = self::get_lifetime( 'refresh_token', $client_id );
 
 		// --- Access token ---
-		$access_jti = bin2hex( random_bytes( 16 ) );
 		$access_payload = array(
 			'iss'   => $issuer,
 			'sub'   => (string) $user_id,
 			'aud'   => $client_id,
 			'iat'   => $now,
-			'exp'   => $now + self::ACCESS_TOKEN_LIFETIME,
-			'jti'   => $access_jti,
+			'exp'   => $now + $access_lifetime,
+			'jti'   => bin2hex( random_bytes( 16 ) ),
 			'scope' => $scope,
 		);
-		$access_token = self::create_jwt( $access_payload );
+		$access_payload = self::apply_claims_filter( 'keystone_oidc_access_token_claims', $access_payload, $user, $client_id, $scopes );
+		$access_token   = self::create_jwt( $access_payload );
 
 		// Store a hash reference for revocation checks.
-		self::store_token_record( hash( 'sha256', $access_token ), $client_id, $user_id, $scope, 'access', $now + self::ACCESS_TOKEN_LIFETIME );
+		self::store_token_record( hash( 'sha256', $access_token ), $client_id, $user_id, $scope, 'access', $now + $access_lifetime );
 
 		// --- ID token ---
-		$user = get_userdata( $user_id );
 		$id_payload = array(
 			'iss' => $issuer,
 			'sub' => (string) $user_id,
 			'aud' => $client_id,
 			'iat' => $now,
-			'exp' => $now + self::ACCESS_TOKEN_LIFETIME,
+			'exp' => $now + $access_lifetime,
 			'jti' => bin2hex( random_bytes( 16 ) ),
 		);
 		if ( $nonce ) {
 			$id_payload['nonce'] = $nonce;
 		}
 		if ( $user ) {
-			$id_payload = array_merge( $id_payload, self::build_user_claims( $user, explode( ' ', $scope ) ) );
+			$id_payload = array_merge( $id_payload, self::build_user_claims( $user, $scopes ) );
 		}
-		$id_token = self::create_jwt( $id_payload );
+		$id_payload = self::apply_claims_filter( 'keystone_oidc_id_token_claims', $id_payload, $user, $client_id, $scopes );
+		$id_token   = self::create_jwt( $id_payload );
 
 		// --- Refresh token ---
-		$refresh_token       = bin2hex( random_bytes( 32 ) );
-		$refresh_token_hash  = hash( 'sha256', $refresh_token );
-		self::store_token_record( $refresh_token_hash, $client_id, $user_id, $scope, 'refresh', $now + self::REFRESH_TOKEN_LIFETIME );
+		$refresh_token      = bin2hex( random_bytes( 32 ) );
+		$refresh_token_hash = hash( 'sha256', $refresh_token );
+		self::store_token_record( $refresh_token_hash, $client_id, $user_id, $scope, 'refresh', $now + $refresh_lifetime );
 
 		return array(
 			'access_token'  => $access_token,
 			'id_token'      => $id_token,
 			'refresh_token' => $refresh_token,
-			'expires_in'    => self::ACCESS_TOKEN_LIFETIME,
+			'expires_in'    => $access_lifetime,
 		);
+	}
+
+	/**
+	 * Get a (filterable) lifetime in seconds.
+	 *
+	 * @param string $type      'auth_code', 'access_token' or 'refresh_token'.
+	 * @param string $client_id Client ID.
+	 * @return int Seconds.
+	 */
+	public static function get_lifetime( $type, $client_id = '' ) {
+		$defaults = array(
+			'auth_code'     => self::AUTH_CODE_LIFETIME,
+			'access_token'  => self::ACCESS_TOKEN_LIFETIME,
+			'refresh_token' => self::REFRESH_TOKEN_LIFETIME,
+		);
+		$default = isset( $defaults[ $type ] ) ? $defaults[ $type ] : 3600;
+
+		/**
+		 * Filters a token lifetime in seconds.
+		 *
+		 * The dynamic part is auth_code, access_token or refresh_token.
+		 *
+		 * @param int    $seconds   Lifetime in seconds.
+		 * @param string $client_id Client ID.
+		 */
+		$seconds = (int) apply_filters( "keystone_oidc_{$type}_lifetime", $default, $client_id );
+		return $seconds > 0 ? $seconds : $default;
+	}
+
+	/**
+	 * Apply a claims filter while keeping protocol-critical claims intact.
+	 *
+	 * @param string       $hook      Filter name.
+	 * @param array        $claims    Claims.
+	 * @param WP_User|bool $user      User (false if not found).
+	 * @param string       $client_id Client ID.
+	 * @param array        $scopes    Granted scopes.
+	 * @return array Filtered claims.
+	 */
+	public static function apply_claims_filter( $hook, array $claims, $user, $client_id, array $scopes ) {
+		$filtered = apply_filters( $hook, $claims, $user, $client_id, $scopes );
+		if ( ! is_array( $filtered ) ) {
+			return $claims;
+		}
+		foreach ( array( 'iss', 'sub', 'aud', 'exp', 'iat', 'jti', 'nonce' ) as $key ) {
+			if ( array_key_exists( $key, $claims ) ) {
+				$filtered[ $key ] = $claims[ $key ];
+			} else {
+				unset( $filtered[ $key ] );
+			}
+		}
+		return $filtered;
+	}
+
+	/**
+	 * Revoke all tokens of a user (optionally limited to one client).
+	 *
+	 * @param int         $user_id   WordPress user ID.
+	 * @param string|null $client_id Client ID, or null for all clients.
+	 * @return int Number of token records revoked.
+	 */
+	public static function revoke_user_tokens( $user_id, $client_id = null ) {
+		global $wpdb;
+		$user_id = (int) $user_id;
+		if ( $user_id <= 0 ) {
+			return 0;
+		}
+		$table = $wpdb->prefix . KEYSTONE_OIDC_Client_Manager::TABLE_TOKENS;
+
+		// Collect hashes first so the object cache can be invalidated.
+		if ( null === $client_id ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT token_hash, token_type FROM {$table} WHERE user_id = %d AND revoked = 0", $user_id ) );
+		} else {
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT token_hash, token_type FROM {$table} WHERE user_id = %d AND client_id = %s AND revoked = 0", $user_id, $client_id ) );
+		}
+
+		$count = 0;
+		foreach ( (array) $rows as $row ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->update( $table, array( 'revoked' => 1 ), array( 'token_hash' => $row->token_hash ), array( '%d' ), array( '%s' ) );
+			wp_cache_delete( self::token_cache_key( $row->token_type, $row->token_hash ), self::CACHE_GROUP );
+			++$count;
+		}
+
+		/**
+		 * Fires after a user's tokens were revoked.
+		 *
+		 * @param int         $user_id   User ID.
+		 * @param string|null $client_id Client ID or null for all clients.
+		 * @param int         $count     Number of revoked token records.
+		 */
+		do_action( 'keystone_oidc_tokens_revoked', $user_id, $client_id, $count );
+
+		return $count;
+	}
+
+	/**
+	 * Revoke tokens when a user's password changes.
+	 *
+	 * @param int     $user_id       User ID.
+	 * @param WP_User $old_user_data User data before the update.
+	 */
+	public static function on_profile_update( $user_id, $old_user_data ) {
+		$user = get_userdata( $user_id );
+		if ( $user && $old_user_data && $user->user_pass !== $old_user_data->user_pass ) {
+			self::revoke_user_tokens( $user_id );
+		}
+	}
+
+	/**
+	 * Revoke tokens when a user is deleted.
+	 *
+	 * @param int $user_id User ID.
+	 */
+	public static function on_delete_user( $user_id ) {
+		self::revoke_user_tokens( $user_id );
+	}
+
+	/**
+	 * Revoke tokens after a password reset.
+	 *
+	 * @param WP_User $user User.
+	 */
+	public static function on_password_reset( $user ) {
+		self::revoke_user_tokens( $user->ID );
 	}
 
 	/**
@@ -547,6 +678,25 @@ class KEYSTONE_OIDC_Token_Manager {
 		}
 		if ( $record->client_id !== $client_id ) {
 			return new WP_Error( 'invalid_grant', 'Client ID mismatch.' );
+		}
+
+		$user = get_userdata( $record->user_id );
+		if ( ! $user ) {
+			return new WP_Error( 'invalid_grant', 'User no longer exists.' );
+		}
+
+		/**
+		 * Filters whether a refresh token may still be exchanged.
+		 *
+		 * Return false or a WP_Error to reject with invalid_grant.
+		 *
+		 * @param bool   $allowed   Whether refreshing is allowed.
+		 * @param int    $user_id   User ID.
+		 * @param string $client_id Client ID.
+		 */
+		$allowed = apply_filters( 'keystone_oidc_refresh_allowed', true, (int) $record->user_id, $client_id );
+		if ( is_wp_error( $allowed ) || ! $allowed ) {
+			return new WP_Error( 'invalid_grant', is_wp_error( $allowed ) ? $allowed->get_error_message() : 'Refresh not allowed.' );
 		}
 
 		// Revoke old refresh token.

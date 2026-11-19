@@ -23,6 +23,8 @@ After that the plaintext can't be recovered, only reset.
 - Redirect URIs are matched exactly.
 - PKCE values are validated against RFC 7636 (43-128 unreserved characters). Unknown challenge methods are rejected.
 - Refresh tokens rotate on every use.
+- A user's tokens are revoked automatically when the user is deleted, resets their password or changes it. Refresh tokens of deleted users are always rejected.
+- Sites can add their own rules (for example blocking banned users) with the [`keystone_oidc_authorize_user`](Extending.md#keystone_oidc_authorize_user) and [`keystone_oidc_refresh_allowed`](Extending.md#keystone_oidc_refresh_allowed) filters.
 - Rotating the signing keys invalidates every issued JWT at once.
 
 ## Reporting a vulnerability

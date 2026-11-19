@@ -13,7 +13,7 @@ title: Scopes and claims
 
 ## Roles
 
-With the `roles` scope the ID token and the UserInfo response contain a flat `roles` array, for example `"roles": ["editor"]`. The scope must be allowed on the client **and** requested by the application. WordPress has no native groups, so no `groups` claim is emitted. Plugins can adjust the released roles with the `keystone_oidc_user_roles` filter.
+With the `roles` scope the ID token and the UserInfo response contain a flat `roles` array, for example `"roles": ["editor"]`. The scope must be allowed on the client **and** requested by the application. WordPress has no native groups, so no `groups` claim is emitted. Plugins can adjust the released roles with the `keystone_oidc_user_roles` filter, and add custom claims with the claims filters described in [Extending with hooks](Extending.md#claims-filters).
 
 ## Example UserInfo response
 

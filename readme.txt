@@ -111,6 +111,10 @@ Yes, both `S256` and `plain` code challenge methods are supported. Public client
 
 A confidential client is a server-side application that can keep a secret. A public client (single-page or mobile app) cannot, so it uses PKCE instead. Set the type per client under OIDC Provider > Clients. Existing clients are treated as confidential after an update.
 
+= Can I customize who may sign in or what is in the tokens? =
+
+Yes. Keystone OIDC provides filters to allow or deny sign-in (`keystone_oidc_authorize_user`), re-check users on refresh (`keystone_oidc_refresh_allowed`), add custom claims to the ID token, access token and UserInfo response, and change token lifetimes. `KEYSTONE_OIDC_Token_Manager::revoke_user_tokens()` revokes a user's tokens, which also happens automatically when a user is deleted or changes their password. See the "Extending with hooks" page in the documentation.
+
 == Changelog ==
 
 = 3.0.1 =

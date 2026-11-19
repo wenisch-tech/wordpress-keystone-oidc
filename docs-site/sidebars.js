@@ -9,6 +9,7 @@ const sidebars = {
       type: 'category', label: 'Concepts', collapsed: false,
       items: ['How-It-Works', 'Client-Types', 'Scopes-And-Claims', 'Security'],
     },
+    'Extending',
     'Endpoint-Reference',
     'Upgrading',
     'Troubleshooting',

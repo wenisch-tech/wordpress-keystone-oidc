@@ -64,6 +64,9 @@ class KEYSTONE_OIDC_Provider {
 		add_filter( 'query_vars', array( $this, 'add_query_vars' ) );
 		add_filter( 'redirect_canonical', array( $this, 'disable_canonical_redirect_for_oidc' ), 10, 2 );
 		add_action( 'template_redirect', array( $this, 'handle_request' ) );
+		add_action( 'delete_user', array( 'KEYSTONE_OIDC_Token_Manager', 'on_delete_user' ) );
+		add_action( 'after_password_reset', array( 'KEYSTONE_OIDC_Token_Manager', 'on_password_reset' ) );
+		add_action( 'profile_update', array( 'KEYSTONE_OIDC_Token_Manager', 'on_profile_update' ), 10, 2 );
 		add_action( 'wp_scheduled_delete', array( 'KEYSTONE_OIDC_Token_Manager', 'cleanup_expired' ) );
 	}
 
@@ -281,6 +284,25 @@ class KEYSTONE_OIDC_Provider {
 			$authorize_url = add_query_arg( $authorize_params, self::get_endpoint_url( 'oauth/authorize' ) );
 			wp_safe_redirect( wp_login_url( $authorize_url ) );
 			exit;
+		}
+
+		/**
+		 * Filters whether the current user may sign in to the client.
+		 *
+		 * Runs for every authorization request of a logged-in user (both when the
+		 * consent screen is requested and when it is submitted), before a code is
+		 * issued. Return false or a WP_Error to answer with error=access_denied.
+		 *
+		 * @param bool    $allowed   Whether sign-in is allowed.
+		 * @param WP_User $user      Current user.
+		 * @param string  $client_id Client ID.
+		 * @param string  $scope     Granted scope string.
+		 */
+		$allowed = apply_filters( 'keystone_oidc_authorize_user', true, wp_get_current_user(), $client_id, $scope );
+		if ( is_wp_error( $allowed ) || ! $allowed ) {
+			$message = is_wp_error( $allowed ) ? $allowed->get_error_message() : 'Access denied.';
+			$this->redirect_with_error( $redirect_uri, 'access_denied', $message, $state );
+			return;
 		}
 
 		if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] ) {
@@ -504,6 +526,7 @@ class KEYSTONE_OIDC_Provider {
 			array( 'sub' => (string) $user_id ),
 			KEYSTONE_OIDC_Token_Manager::build_user_claims( $user, $scopes )
 		);
+		$userinfo = KEYSTONE_OIDC_Token_Manager::apply_claims_filter( 'keystone_oidc_userinfo_claims', $userinfo, $user, isset( $payload['aud'] ) ? $payload['aud'] : '', $scopes );
 
 		$this->send_json( $userinfo );
 	}
