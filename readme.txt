@@ -34,6 +34,10 @@ Keystone OIDC transforms your WordPress installation into a fully-featured **Ope
 4. Copy the generated **Client ID** and **Client Secret** (shown once)
 5. Configure your OIDC client application with the discovery URL shown in the settings
 
+= Documentation =
+
+Full documentation (installation, client types, endpoint reference, upgrade notes and troubleshooting) is available at [keystone-oidc.wenisch.tech](https://keystone-oidc.wenisch.tech/).
+
 = Endpoints =
 
 All URLs are relative to your WordPress site root.

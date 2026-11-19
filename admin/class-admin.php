@@ -55,6 +55,12 @@ class KEYSTONE_OIDC_Admin {
 
 		$links[] = sprintf(
 			'<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
+			esc_url( 'https://keystone-oidc.wenisch.tech/' ),
+			esc_html__( 'Documentation', 'keystone-oidc' )
+		);
+
+		$links[] = sprintf(
+			'<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
 			esc_url( 'https://github.com/wenisch-tech/wordpress-keystone-oidc/issues/new' ),
 			esc_html__( 'Report a bug', 'keystone-oidc' )
 		);
