@@ -3,7 +3,7 @@ Contributors: jfwenisch
 Tags: oidc, openid-connect, sso, authentication, oauth2
 Requires at least: 5.6
 Tested up to: 7.1.5
-Stable tag: 3.0.1
+Stable tag: 3.1.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -120,6 +120,27 @@ Yes. Register a public client and use either an `https` redirect (Android App Li
 Yes. Keystone OIDC provides filters to allow or deny sign-in (`keystone_oidc_authorize_user`), re-check users on refresh (`keystone_oidc_refresh_allowed`), add custom claims to the ID token, access token and UserInfo response, and change token lifetimes. `KEYSTONE_OIDC_Token_Manager::revoke_user_tokens()` revokes a user's tokens, which also happens automatically when a user is deleted or changes their password. See the "Extending with hooks" page in the documentation.
 
 == Changelog ==
+
+= 3.1.0 =
+## [3.1.0](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v3.0.1...v3.1.0) (2026-11-20)
+
+
+### Features
+
+* Added support for extension hooks, custom claims, token lifetime and introduced automatic revocation upon passowrd reset / update user or delete user ([66c7370](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/66c7370a1d48948965cf8c827bf06accb23ccdbf))
+* **clients:** allow private-use URI schemes for native app redirects ([d7df97b](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/d7df97b6bbea260e678349e2d60e17ce0bfd531d))
+
+
+### Bug Fixes
+
+* ensure artifact is created during PR so it can be validated ([1d22483](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/1d22483f848ad6eabbc274bae404fae4b20ed7ce))
+
+
+### Documentation
+
+* updated docs ([069f95a](https://github.com/wenisch-tech/wordpress-keystone-oidc/commit/069f95abea7282aadbe5860ddfd80dfffecb32cf))
+
+
 
 = 3.0.1 =
 ### [3.0.1](https://github.com/wenisch-tech/wordpress-keystone-oidc/compare/v3.0.0...v3.0.1) (2026-11-19)
